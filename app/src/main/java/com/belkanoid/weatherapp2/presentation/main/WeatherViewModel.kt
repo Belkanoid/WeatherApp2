@@ -1,5 +1,6 @@
 package com.belkanoid.weatherapp2.presentation.main
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.belkanoid.weatherapp2.domain.repository.WeatherRepository
@@ -25,7 +26,21 @@ class WeatherViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             connectivityObserver.observe().collect{status->
-                _networkStatus.value = status
+                Log.d("ABCv", status.toString())
+                when(status) {
+                    ConnectivityObserver.Status.Available -> {
+                        _networkStatus.value = status
+                    }
+                    ConnectivityObserver.Status.Losing -> {
+                        _networkStatus.value = status
+                    }
+                    ConnectivityObserver.Status.Lost -> {
+                        _networkStatus.value = status
+                    }
+                    ConnectivityObserver.Status.Unavailable -> {
+                        _networkStatus.value = status
+                    }
+                }
             }
         }
     }
