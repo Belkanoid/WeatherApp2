@@ -1,6 +1,8 @@
 package com.belkanoid.weatherapp2.domain.util
 
-sealed class Result<T>(val data: T? = null, val message: String? = null) {
-    class Success<T>(data: T?): Result<T>(data)
-    class Error<T>(message: String, data: T? = null): Result<T>(data, message)
+import com.belkanoid.weatherapp2.domain.model.WeatherInfo
+
+sealed class Result {
+    data class Success(val data: WeatherInfo): Result()
+    data class Error(val message: String): Result()
 }

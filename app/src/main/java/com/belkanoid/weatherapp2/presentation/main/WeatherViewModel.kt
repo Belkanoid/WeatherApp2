@@ -4,8 +4,12 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.belkanoid.weatherapp2.domain.repository.WeatherRepository
+import com.belkanoid.weatherapp2.domain.state.Action
+import com.belkanoid.weatherapp2.domain.state.State
+import com.belkanoid.weatherapp2.domain.state.StateMachine
 import com.belkanoid.weatherapp2.domain.util.ConnectivityObserver
 import com.belkanoid.weatherapp2.domain.util.Result
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,66 +21,61 @@ import javax.inject.Inject
 class WeatherViewModel @Inject constructor(
     private val repository: WeatherRepository,
     private val connectivityObserver: ConnectivityObserver,
-) : ViewModel() {
+) : ViewModel(), StateMachine.StateMachineListener {
 
-    private var _state = MutableStateFlow<WeatherState>(WeatherState.Empty)
-    val state = _state.asStateFlow()
+    private val stateMachine = StateMachine(this)
     private val _networkStatus = MutableStateFlow(ConnectivityObserver.Status.Available)
-
-    init {
-        viewModelScope.launch {
-            connectivityObserver.observe().collect{status->
-                Log.d("ABCv", status.toString())
-                when(status) {
-                    ConnectivityObserver.Status.Available -> {
-                        _networkStatus.value = status
-                    }
-                    ConnectivityObserver.Status.Losing -> {
-                        _networkStatus.value = status
-                    }
-                    ConnectivityObserver.Status.Lost -> {
-                        _networkStatus.value = status
-                    }
-                    ConnectivityObserver.Status.Unavailable -> {
-                        _networkStatus.value = status
-                    }
-                }
-            }
-        }
-    }
+    private val _state = MutableStateFlow<State>(State.Idle)
+    val state = _state.asStateFlow()
 
     private var searchJob: Job? = null
 
-    private fun getWeatherInfo(city: String) {
-        _state.value = WeatherState.Loading
-
-
-        if (_networkStatus.value != ConnectivityObserver.Status.Available) {
-            _state.value = WeatherState.Error.NetworkError("Check Internet connection")
-            return
+    init {
+        viewModelScope.launch {
+            connectivityObserver.observe().collect { status ->
+                _networkStatus.value = status
+                Log.d("aFv", status.name)
+            }
         }
+    }
 
+    override suspend fun fetchData(city: String) {
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
+            if (!isInternetAvailable()) return@launch
+
             delay(400L)
-            when (val result = repository.getWeatherInfo(city)) {
-                is Result.Success -> {
-                    _state.value = WeatherState.Success(result.data)
-                }
-                is Result.Error -> {
-                    _state.value = WeatherState.Error.TypeError(result.message ?: "Unknown error, try again...")
-                }
+            fetchWeatherInfo(city)
+        }
+    }
+
+    override fun dispatchState(newState: State) {
+        viewModelScope.launch { _state.emit(newState) }
+    }
+
+    private suspend fun fetchWeatherInfo(city: String) {
+        when (val result = repository.fetchWeatherInfo(city)) {
+            is Result.Success -> {
+                stateMachine.dispatch(Action.LoadSuccess(result.data))
+            }
+            is Result.Error -> {
+                stateMachine.dispatch(Action.LoadFailure(result.message))
             }
         }
     }
 
-    fun onEvent(event: MainEvent) {
-        when(event) {
-            is MainEvent.SearchByCityEvent -> {
-                getWeatherInfo(event.query)
-            }
+    private suspend fun isInternetAvailable(): Boolean {
+        if (_networkStatus.value == ConnectivityObserver.Status.Available) {
+            return true
         }
+        stateMachine.dispatch(Action.LoadFailure("Please check your Internet connection"))
+        return false
     }
 
+    fun getWeatherInfo(city: String) {
+        viewModelScope.launch {
+            stateMachine.dispatch(Action.LoadWeatherInfo(city = city))
+        }
+    }
 
 }

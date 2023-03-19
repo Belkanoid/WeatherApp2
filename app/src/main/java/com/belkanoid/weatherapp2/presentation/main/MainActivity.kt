@@ -7,6 +7,7 @@ import androidx.core.widget.doOnTextChanged
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.belkanoid.weatherapp2.databinding.ActivityMainBinding
+import com.belkanoid.weatherapp2.domain.state.State
 import com.belkanoid.weatherapp2.domain.util.showSnackBar
 import com.belkanoid.weatherapp2.presentation.ViewModelFactory
 import com.belkanoid.weatherapp2.presentation.WeatherApplication
@@ -43,36 +44,30 @@ class MainActivity : AppCompatActivity() {
     private fun handleEvents() {
         binding.apply {
             textEditText.doOnTextChanged { text, _, _, _ ->
-                viewModel.onEvent(MainEvent.SearchByCityEvent(text.toString()))
-                textInputLayout.error = null
-                tvTemperature.text = null
+                viewModel.getWeatherInfo(text.toString())
             }
         }
     }
 
     private suspend fun handleState() {
         viewModel.state.collect { state ->
-            binding.progressBar.visibility = View.INVISIBLE
-            when (state) {
-                is WeatherState.Success -> {
-                    binding.tvTemperature.text = state.data?.main?.temp?.toString() ?: let {
-                        showSnackBar(binding.root, "Something went wrong, try again...")
-                        return@collect
-                    }
+            when(state) {
+                is State.Success -> {
+                    binding.tvTemperature.text = state.data.main.temp.toString()
+                    binding.progressBar.visibility = View.INVISIBLE
                 }
-                is WeatherState.Error.NetworkError -> {
-                    binding.textInputLayout.error = "Check for Network is Available"
-                    showSnackBar(binding.root, state.message)
+                is State.Error -> {
+                    binding.textInputLayout.error = state.message
+                    binding.progressBar.visibility = View.INVISIBLE
                 }
-                is WeatherState.Error.TypeError -> {
-                    binding.textInputLayout.error = "Check for a mistake in City\'s name"
-                    showSnackBar(binding.root, state.message)
-                }
-
-                is WeatherState.Loading -> {
+                is State.Loading -> {
                     binding.progressBar.visibility = View.VISIBLE
+                    binding.textInputLayout.error = null
+                    binding.tvTemperature.text = null
                 }
-                else -> Unit
+                else -> {
+                    binding.progressBar.visibility = View.INVISIBLE
+                }
             }
         }
     }
