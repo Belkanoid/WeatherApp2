@@ -25,7 +25,6 @@ class MainActivity : AppCompatActivity() {
     private val viewModel by lazy {
         ViewModelProvider(this, viewModelFactory)[WeatherViewModel::class.java]
     }
-
     private val component by lazy { (application as WeatherApplication).component }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -37,7 +36,6 @@ class MainActivity : AppCompatActivity() {
             handleState()
         }
         handleEvents()
-
     }
 
 
@@ -67,6 +65,8 @@ class MainActivity : AppCompatActivity() {
                 }
                 else -> {
                     binding.progressBar.visibility = View.INVISIBLE
+                    binding.textInputLayout.error = null
+                    binding.tvTemperature.text = null
                 }
             }
         }

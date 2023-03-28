@@ -9,7 +9,6 @@ import com.belkanoid.weatherapp2.domain.state.State
 import com.belkanoid.weatherapp2.domain.state.StateMachine
 import com.belkanoid.weatherapp2.domain.util.ConnectivityObserver
 import com.belkanoid.weatherapp2.domain.util.Result
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,7 +23,7 @@ class WeatherViewModel @Inject constructor(
 ) : ViewModel(), StateMachine.StateMachineListener {
 
     private val stateMachine = StateMachine(this)
-    private val _networkStatus = MutableStateFlow(ConnectivityObserver.Status.Available)
+    private val _networkStatus = MutableStateFlow(ConnectivityObserver.Status.Unknown)
     private val _state = MutableStateFlow<State>(State.Idle)
     val state = _state.asStateFlow()
 
@@ -34,7 +33,6 @@ class WeatherViewModel @Inject constructor(
         viewModelScope.launch {
             connectivityObserver.observe().collect { status ->
                 _networkStatus.value = status
-                Log.d("aFv", status.name)
             }
         }
     }
@@ -56,10 +54,10 @@ class WeatherViewModel @Inject constructor(
     private suspend fun fetchWeatherInfo(city: String) {
         when (val result = repository.fetchWeatherInfo(city)) {
             is Result.Success -> {
-                stateMachine.dispatch(Action.LoadSuccess(result.data))
+                stateMachine.dispatch(Action.LoadSuccess(data = result.data))
             }
             is Result.Error -> {
-                stateMachine.dispatch(Action.LoadFailure(result.message))
+                stateMachine.dispatch(Action.LoadFailure(message = result.message))
             }
         }
     }
@@ -68,14 +66,18 @@ class WeatherViewModel @Inject constructor(
         if (_networkStatus.value == ConnectivityObserver.Status.Available) {
             return true
         }
-        stateMachine.dispatch(Action.LoadFailure("Please check your Internet connection"))
+        stateMachine.dispatch(Action.LoadFailure(message = "Please check your Internet connection"))
         return false
     }
 
     fun getWeatherInfo(city: String) {
         viewModelScope.launch {
+            if (city.isBlank()){
+                searchJob?.cancel()
+                stateMachine.dispatch(Action.BackToIdle)
+                return@launch
+            }
             stateMachine.dispatch(Action.LoadWeatherInfo(city = city))
         }
     }
-
 }

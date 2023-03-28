@@ -13,6 +13,7 @@ sealed class State {
 }
 
 sealed class Action {
+    object BackToIdle: Action()
     data class LoadWeatherInfo(val city: String): Action()
     data class LoadSuccess(val data: WeatherInfo): Action()
     data class LoadFailure(val message: String): Action()
@@ -33,6 +34,9 @@ class StateMachine(
             }
             is Action.LoadFailure -> {
                 stateMachineListener.dispatchState(State.Error(action.message))
+            }
+            is Action.BackToIdle -> {
+                stateMachineListener.dispatchState(State.Idle)
             }
         }
     }

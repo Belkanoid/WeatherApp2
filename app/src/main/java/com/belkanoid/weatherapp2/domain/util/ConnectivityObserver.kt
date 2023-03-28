@@ -6,8 +6,10 @@ import kotlinx.coroutines.flow.Flow
 interface ConnectivityObserver {
     fun observe(): Flow<Status>
 
+    fun initObserve(): Status
+
     enum class Status {
-        Available, Unavailable, Losing, Lost
+        Unknown, Available, Unavailable, Losing, Lost
     }
 
 }
