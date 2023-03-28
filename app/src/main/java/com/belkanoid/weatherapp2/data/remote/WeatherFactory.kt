@@ -1,12 +1,11 @@
 package com.belkanoid.weatherapp2.data.remote
 
+import com.belkanoid.weatherapp2.BuildConfig
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 object WeatherFactory {
-
-    private const val BASE_URL = "https://api.openweathermap.org/data/2.5/"
 
     val service: WeatherApi by lazy {
         val client = OkHttpClient.Builder()
@@ -14,7 +13,7 @@ object WeatherFactory {
             .build()
 
         Retrofit.Builder()
-            .baseUrl(BASE_URL)
+            .baseUrl(BuildConfig.BASE_URL)
             .addConverterFactory(GsonConverterFactory.create())
             .client(client)
             .build()

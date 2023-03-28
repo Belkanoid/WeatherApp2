@@ -4,6 +4,8 @@ plugins {
     id 'kotlin-kapt'
 }
 
+
+
 android {
     namespace 'com.belkanoid.weatherapp2'
     compileSdk 33
@@ -16,6 +18,13 @@ android {
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        Properties prop = new Properties()
+        prop.load(project.rootProject.file("local.properties").newDataInputStream())
+
+        buildConfigField "String", "API_KEY", "\"${prop.getProperty("api_key")}\""
+
+        buildConfigField "String", "BASE_URL", "\"${prop.getProperty("base_url")}\""
     }
 
     buildTypes {
@@ -34,6 +43,7 @@ android {
     viewBinding {
         enabled true
     }
+
 }
 
 dependencies {

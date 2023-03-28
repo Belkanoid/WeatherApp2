@@ -56,7 +56,7 @@ class NetworkConnectivityObserver @Inject constructor(
         }
     }.distinctUntilChanged()
 
-    override fun initObserve(): ConnectivityObserver.Status {
+    private fun initObserve(): ConnectivityObserver.Status {
         var status = ConnectivityObserver.Status.Unavailable
         connectivityManager.run {
             getNetworkCapabilities(activeNetwork)?.run {

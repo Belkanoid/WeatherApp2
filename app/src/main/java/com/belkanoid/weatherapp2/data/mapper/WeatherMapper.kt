@@ -10,7 +10,7 @@ fun WeatherInfoDto.toWeatherInfo() = WeatherInfo(
     name = name,
     sys = sys.toSys(),
     timezone = timezone,
-    visibility = timezone,
+    visibility = visibility,
     weather = weather.map { it.toWeather() },
     wind = wind.toWind()
 

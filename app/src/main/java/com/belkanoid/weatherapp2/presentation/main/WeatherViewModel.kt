@@ -9,11 +9,9 @@ import com.belkanoid.weatherapp2.domain.state.State
 import com.belkanoid.weatherapp2.domain.state.StateMachine
 import com.belkanoid.weatherapp2.domain.util.ConnectivityObserver
 import com.belkanoid.weatherapp2.domain.util.Result
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 
@@ -48,7 +46,7 @@ class WeatherViewModel @Inject constructor(
     }
 
     override fun dispatchState(newState: State) {
-        viewModelScope.launch { _state.emit(newState) }
+        viewModelScope.launch(Dispatchers.IO) { _state.emit(newState) }
     }
 
     private suspend fun fetchWeatherInfo(city: String) {
