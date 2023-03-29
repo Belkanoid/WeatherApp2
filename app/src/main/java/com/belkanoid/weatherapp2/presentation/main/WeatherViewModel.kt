@@ -3,6 +3,7 @@ package com.belkanoid.weatherapp2.presentation.main
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.belkanoid.weatherapp2.R
 import com.belkanoid.weatherapp2.domain.repository.WeatherRepository
 import com.belkanoid.weatherapp2.domain.state.Action
 import com.belkanoid.weatherapp2.domain.state.State
@@ -21,15 +22,24 @@ class WeatherViewModel @Inject constructor(
 ) : ViewModel(), StateMachine.StateMachineListener {
 
     private val stateMachine = StateMachine(this)
-    private val _networkStatus = MutableStateFlow(ConnectivityObserver.Status.Unknown)
+    private val _networkStatus = MutableStateFlow(ConnectivityObserver.Status.Available)
     private val _state = MutableStateFlow<State>(State.Idle)
     val state = _state.asStateFlow()
 
     private var searchJob: Job? = null
 
     init {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             connectivityObserver.observe().collect { status ->
+                val availableStatus = ConnectivityObserver.Status.Available
+                val isBackToOnline = _networkStatus.value != availableStatus && status == availableStatus
+                val isGoneToOffline = _networkStatus.value == availableStatus && status != availableStatus
+                if (isBackToOnline){
+                    _state.emit(State.InternetStatus("Снова в сети", R.color.backToOnlineBackground))
+                }
+                if(isGoneToOffline) {
+                    _state.emit(State.InternetStatus("Связь пропала", R.color.errorBackground))
+                }
                 _networkStatus.value = status
             }
         }

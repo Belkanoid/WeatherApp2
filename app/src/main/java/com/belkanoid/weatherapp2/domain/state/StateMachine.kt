@@ -10,6 +10,7 @@ sealed class State {
     object Loading: State()
     data class Success(val data: WeatherInfo): State()
     data class Error(val message: String): State()
+    data class InternetStatus(val message: String, val color: Int): State()
 }
 
 sealed class Action {
