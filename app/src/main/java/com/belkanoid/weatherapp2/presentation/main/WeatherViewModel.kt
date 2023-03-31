@@ -1,6 +1,5 @@
 package com.belkanoid.weatherapp2.presentation.main
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.belkanoid.weatherapp2.R
@@ -11,8 +10,7 @@ import com.belkanoid.weatherapp2.domain.state.StateMachine
 import com.belkanoid.weatherapp2.domain.util.ConnectivityObserver
 import com.belkanoid.weatherapp2.domain.util.Result
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.*
 import javax.inject.Inject
 
 
@@ -22,34 +20,42 @@ class WeatherViewModel @Inject constructor(
 ) : ViewModel(), StateMachine.StateMachineListener {
 
     private val stateMachine = StateMachine(this)
-    private val _networkStatus = MutableStateFlow(ConnectivityObserver.Status.Available)
+    private val networkStatus = MutableStateFlow(ConnectivityObserver.Status.Available)
     private val _state = MutableStateFlow<State>(State.Idle)
     val state = _state.asStateFlow()
 
     private var searchJob: Job? = null
 
     init {
-        viewModelScope.launch(Dispatchers.IO) {
-            connectivityObserver.observe().collect { status ->
-                val availableStatus = ConnectivityObserver.Status.Available
-                val isBackToOnline = _networkStatus.value != availableStatus && status == availableStatus
-                val isGoneToOffline = _networkStatus.value == availableStatus && status != availableStatus
-                if (isBackToOnline){
-                    _state.emit(State.InternetStatus("Снова в сети", R.color.backToOnlineBackground))
-                }
-                if(isGoneToOffline) {
-                    _state.emit(State.InternetStatus("Связь пропала", R.color.errorBackground))
-                }
-                _networkStatus.value = status
+        connectivityObserver.observe()
+            .onEach { status ->
+                checkInternetState(status)
+                networkStatus.value = status
             }
+            .launchIn(viewModelScope)
+    }
+
+    private suspend fun checkInternetState(status: ConnectivityObserver.Status) {
+        val availableStatus = ConnectivityObserver.Status.Available
+        val isBackToOnline = networkStatus.value != availableStatus && status == availableStatus
+        val isGoneToOffline = networkStatus.value == availableStatus && status != availableStatus
+        if (isBackToOnline) {
+            _state.emit(State.InternetStatus("Снова в сети", R.color.backToOnlineBackground))
+        }
+        if (isGoneToOffline) {
+            _state.emit(State.InternetStatus("Связь пропала", R.color.errorBackground))
         }
     }
 
-    override suspend fun fetchData(city: String) {
-        searchJob?.cancel()
-        searchJob = viewModelScope.launch {
-            if (!isInternetAvailable()) return@launch
+    private fun isInternetAvailable() = networkStatus.value == ConnectivityObserver.Status.Available
 
+    override fun fetchData(city: String) {
+        searchJob?.cancel()
+        if (!isInternetAvailable()) {
+            stateMachine.dispatch(Action.LoadFailure("Please check your Internet connection"))
+            return
+        }
+        searchJob = viewModelScope.launch {
             delay(400L)
             fetchWeatherInfo(city)
         }
@@ -70,22 +76,21 @@ class WeatherViewModel @Inject constructor(
         }
     }
 
-    private suspend fun isInternetAvailable(): Boolean {
-        if (_networkStatus.value == ConnectivityObserver.Status.Available) {
-            return true
-        }
-        stateMachine.dispatch(Action.LoadFailure(message = "Please check your Internet connection"))
-        return false
-    }
-
     fun getWeatherInfo(city: String) {
-        viewModelScope.launch {
-            if (city.isBlank()){
+        city.takeIf { it.isBlank() }
+            ?.let {
                 searchJob?.cancel()
                 stateMachine.dispatch(Action.BackToIdle)
-                return@launch
+                return
             }
+
+        viewModelScope.launch {
             stateMachine.dispatch(Action.LoadWeatherInfo(city = city))
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        searchJob?.cancel()
     }
 }

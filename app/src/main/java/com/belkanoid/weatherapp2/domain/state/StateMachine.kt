@@ -24,7 +24,7 @@ class StateMachine(
     private val stateMachineListener: StateMachineListener
 ) {
 
-    suspend fun dispatch(action: Action) = withContext(Dispatchers.IO) {
+    fun dispatch(action: Action) {
         when(action) {
             is Action.LoadWeatherInfo -> {
                 stateMachineListener.fetchData(action.city)
@@ -43,7 +43,7 @@ class StateMachine(
     }
 
     interface StateMachineListener{
-        suspend fun fetchData(city: String)
+        fun fetchData(city: String)
         fun dispatchState(newState: State)
     }
 }
