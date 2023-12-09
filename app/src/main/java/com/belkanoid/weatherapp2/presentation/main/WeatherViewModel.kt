@@ -1,12 +1,9 @@
 package com.belkanoid.weatherapp2.presentation.main
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.belkanoid.weatherapp2.R
 import com.belkanoid.weatherapp2.domain.repository.WeatherRepository
-import com.belkanoid.weatherapp2.domain.state.Action
-import com.belkanoid.weatherapp2.domain.state.State
-import com.belkanoid.weatherapp2.domain.state.StateMachine
 import com.belkanoid.weatherapp2.domain.util.ConnectivityObserver
 import com.belkanoid.weatherapp2.domain.util.Result
 import kotlinx.coroutines.*
@@ -17,80 +14,49 @@ import javax.inject.Inject
 class WeatherViewModel @Inject constructor(
     private val repository: WeatherRepository,
     private val connectivityObserver: ConnectivityObserver,
-) : ViewModel(), StateMachine.StateMachineListener {
+) : ViewModel() {
 
-    private val stateMachine = StateMachine(this)
-    private val networkStatus = MutableStateFlow(ConnectivityObserver.Status.Available)
-    private val _state = MutableStateFlow<State>(State.Idle)
-    val state = _state.asStateFlow()
-
+    private val networkStatus = MutableStateFlow(ConnectivityObserver.Status.Unavailable)
+    private val loadingFlow = MutableSharedFlow<State>()
     private var searchJob: Job? = null
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val state = repository.weatherInfoFlow
+        .mapLatest {
+            when (it) {
+                is Result.Success -> State.Success(it.data)
+                is Result.Error -> State.Error(it.message)
+            }
+        }
+        .mergeWith(loadingFlow)
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Lazily,
+            initialValue = State.Idle
+        )
 
     init {
         connectivityObserver.observe()
-            .onEach { status ->
-                checkInternetState(status)
-                networkStatus.value = status
-            }
+            .onEach { networkStatus.value = it }
             .launchIn(viewModelScope)
-    }
-
-    private suspend fun checkInternetState(status: ConnectivityObserver.Status) {
-        val availableStatus = ConnectivityObserver.Status.Available
-        val isBackToOnline = networkStatus.value != availableStatus && status == availableStatus
-        val isGoneToOffline = networkStatus.value == availableStatus && status != availableStatus
-        if (isBackToOnline) {
-            _state.emit(State.InternetStatus("Снова в сети", R.color.backToOnlineBackground))
-        }
-        if (isGoneToOffline) {
-            _state.emit(State.InternetStatus("Связь пропала", R.color.errorBackground))
-        }
     }
 
     private fun isInternetAvailable() = networkStatus.value == ConnectivityObserver.Status.Available
 
-    override fun fetchData(city: String) {
-        searchJob?.cancel()
-        if (!isInternetAvailable()) {
-            stateMachine.dispatch(Action.LoadFailure("Please check your Internet connection"))
-            return
-        }
+    fun getWeatherInfo(city: CharSequence) {
+        searchJob?.cancel(message = "Started new search")
         searchJob = viewModelScope.launch {
-            delay(400L)
-            fetchWeatherInfo(city)
-        }
-    }
-
-    override fun dispatchState(newState: State) {
-        viewModelScope.launch(Dispatchers.IO) { _state.emit(newState) }
-    }
-
-    private suspend fun fetchWeatherInfo(city: String) {
-        when (val result = repository.fetchWeatherInfo(city)) {
-            is Result.Success -> {
-                stateMachine.dispatch(Action.LoadSuccess(data = result.data))
+            delay(1000)
+            if (!isInternetAvailable()) {
+                loadingFlow.emit(State.Error(message = "Связь не доступна"))
+                return@launch
             }
-            is Result.Error -> {
-                stateMachine.dispatch(Action.LoadFailure(message = result.message))
+            if (city.isEmpty()) {
+                loadingFlow.emit(State.Idle)
+                return@launch
             }
+            loadingFlow.emit(State.Loading)
+            repository.getWeatherInfo(city.toString().trim())
         }
-    }
-
-    fun getWeatherInfo(city: String) {
-        city.takeIf { it.isBlank() }
-            ?.let {
-                searchJob?.cancel()
-                stateMachine.dispatch(Action.BackToIdle)
-                return
-            }
-
-        viewModelScope.launch {
-            stateMachine.dispatch(Action.LoadWeatherInfo(city = city))
-        }
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        searchJob?.cancel()
     }
 }
