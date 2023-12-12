@@ -1,7 +1,17 @@
 package com.belkanoid.weatherapp2.data.mapper
 
-import com.belkanoid.weatherapp2.data.remote.dto.*
-import com.belkanoid.weatherapp2.domain.model.*
+import com.belkanoid.weatherapp2.data.remote.dto.CoordDto
+import com.belkanoid.weatherapp2.data.remote.dto.MainDto
+import com.belkanoid.weatherapp2.data.remote.dto.SysDto
+import com.belkanoid.weatherapp2.data.remote.dto.WeatherDto
+import com.belkanoid.weatherapp2.data.remote.dto.WeatherInfoDto
+import com.belkanoid.weatherapp2.data.remote.dto.WindDto
+import com.belkanoid.weatherapp2.domain.model.Coord
+import com.belkanoid.weatherapp2.domain.model.Main
+import com.belkanoid.weatherapp2.domain.model.Sys
+import com.belkanoid.weatherapp2.domain.model.Weather
+import com.belkanoid.weatherapp2.domain.model.WeatherInfo
+import com.belkanoid.weatherapp2.domain.model.Wind
 
 fun WeatherInfoDto.toWeatherInfo() = WeatherInfo(
     coord = coord.toCoord(),

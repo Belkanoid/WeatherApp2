@@ -5,7 +5,6 @@ import com.belkanoid.weatherapp2.presentation.main.WeatherViewModel
 import dagger.Binds
 import dagger.MapKey
 import dagger.Module
-import dagger.Provides
 import dagger.multibindings.IntoMap
 import kotlin.reflect.KClass
 

@@ -1,6 +1,5 @@
 package com.belkanoid.weatherapp2.presentation.main
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.belkanoid.weatherapp2.domain.repository.WeatherRepository

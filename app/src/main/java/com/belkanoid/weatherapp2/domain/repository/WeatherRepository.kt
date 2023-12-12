@@ -1,5 +1,6 @@
 package com.belkanoid.weatherapp2.domain.repository
 
+import com.belkanoid.weatherapp2.domain.model.WeatherInfo
 import com.belkanoid.weatherapp2.domain.util.Result
 import kotlinx.coroutines.flow.SharedFlow
 

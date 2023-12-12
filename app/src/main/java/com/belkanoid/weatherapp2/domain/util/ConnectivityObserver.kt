@@ -1,6 +1,5 @@
 package com.belkanoid.weatherapp2.domain.util
 
-import android.net.ConnectivityManager
 import kotlinx.coroutines.flow.Flow
 
 interface ConnectivityObserver {
